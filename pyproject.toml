@@ -6,7 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "knowledgeos"
 version = "0.1.0"
 description = "A local-first, multi-source knowledge assistant"
-readme = "README.md"
+# The legacy README is UTF-16; use the UTF-8 architecture document for package metadata.
+readme = "ARCHITECTURE.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1.0",
