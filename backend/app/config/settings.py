@@ -19,8 +19,13 @@ class Settings(BaseSettings):
 
     app_name: str = "KnowledgeOS"
     environment: str = "development"
+    database_path: Path = Path("backend/data/knowledgeos.db")
     upload_directory: Path = Path("backend/data/uploads")
     max_upload_size_bytes: int = Field(default=100 * 1024 * 1024, gt=0)
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_chat_model: str = "llama3.2"
+    ollama_embedding_model: str = "nomic-embed-text"
+    retrieval_limit: int = Field(default=6, ge=1, le=20)
 
 
 @lru_cache
