@@ -25,9 +25,13 @@ async def upload_document(
             filename=file.filename or "", content=content, content_type=file.content_type
         )
     except UnsupportedSourceTypeError as error:
-        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(error)
+        ) from error
     except UploadTooLargeError as error:
-        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(error)
+        ) from error
     finally:
         await file.close()
 
