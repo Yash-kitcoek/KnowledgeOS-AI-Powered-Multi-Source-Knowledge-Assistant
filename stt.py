@@ -1,11 +1,19 @@
 import whisper
+import json
 
 model = whisper.load_model("large-v2")
 
-result = model.transcribe(
-    audio="vidssave.com Give me 54 Seconds and I’ll Make you Dangerously Motivated 240P",
-    language="hi",
-    task="translate"
-)
+result = model.transcribe(audio = "audio/output.mp3", 
+                          language="hi",
+                          task="translate",
+                           word_timestamps=False )
 
-print(result["text"])
+ 
+chunks = []
+for segment in result["segments"]:
+    chunks.append({"start": segment["start"], "end": segment["end"], "text": segment["text"]})
+
+print(chunks)
+
+with open("output.json", "w") as f:
+    json.dump(chunks,f)
