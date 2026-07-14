@@ -1,21 +1,25 @@
 """Endpoints that accept local knowledge sources."""
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 
 from backend.app.api.schemas import UploadAcceptedResponse
 from backend.app.config.settings import Settings, get_settings
+from backend.app.database.repository import KnowledgeRepository
 from backend.app.services.file_staging import (
     FileStagingService,
     UnsupportedSourceTypeError,
     UploadTooLargeError,
 )
+from backend.app.services.indexing import IndexingService
 
 router = APIRouter(prefix="/v1/documents", tags=["documents"])
 
 
 @router.post("/upload", response_model=UploadAcceptedResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_document(
-    file: UploadFile = File(...), settings: Settings = Depends(get_settings)
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    settings: Settings = Depends(get_settings),
 ) -> UploadAcceptedResponse:
     """Stage an upload now; a worker will extract and index it in a later milestone."""
 
@@ -34,6 +38,10 @@ async def upload_document(
         ) from error
     finally:
         await file.close()
+
+    repository = KnowledgeRepository(settings.database_path)
+    repository.create_document(staged)
+    background_tasks.add_task(IndexingService(repository).index, staged.document_id)
 
     return UploadAcceptedResponse(
         document_id=staged.document_id,

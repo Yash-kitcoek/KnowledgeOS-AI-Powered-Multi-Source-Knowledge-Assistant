@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from backend.app.database.repository import KnowledgeRepository
 from backend.app.processors.extractors import extract_text
@@ -22,7 +23,7 @@ class IndexingService:
         try:
             chunks = [
                 (chunk, location)
-                for text, location in extract_text(document["path"])
+                for text, location in extract_text(Path(document["path"]))
                 for chunk in self._chunk(clean_text(text))
             ]
             if not chunks:
@@ -35,7 +36,10 @@ class IndexingService:
     def _chunk(self, text: str) -> list[str]:
         if len(text) <= self._chunk_size:
             return [text] if text else []
-        return [text[index : index + self._chunk_size] for index in range(0, len(text), self._chunk_size)]
+        return [
+            text[index : index + self._chunk_size]
+            for index in range(0, len(text), self._chunk_size)
+        ]
 
 
 def clean_text(text: str) -> str:

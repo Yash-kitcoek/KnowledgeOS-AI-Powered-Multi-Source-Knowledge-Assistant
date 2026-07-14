@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from backend.app.api.routers.ingestion import router as ingestion_router
 from backend.app.config.settings import get_settings
+from backend.app.database.repository import KnowledgeRepository
 
 
 def create_app() -> FastAPI:
@@ -16,6 +17,7 @@ def create_app() -> FastAPI:
         description="Local-first, multi-source knowledge assistant API.",
     )
     app.include_router(ingestion_router)
+    KnowledgeRepository(settings.database_path).initialize()
 
     @app.get("/health", tags=["system"])
     def health_check() -> dict[str, str]:
