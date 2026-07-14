@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Environment and editor configuration
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+
+# Runtime data: source files may contain confidential knowledge.
+backend/data/
+backend/uploads/
+uploads/
+knowledge_base/
+
+# Legacy pipeline output
+embeddings.joblib
+prompt.txt
+response.txt
