@@ -11,7 +11,7 @@ for audio in audios:
         number = audio.split("_")[0]
         title = audio.split("_")[1][:-4]
         print(number, title)
-        result = model.transcribe(audio = f"audios/output.mp3", 
+        result = model.transcribe(audio = f"audios/{audio}", 
         # result = model.transcribe(audio = f"audios/sample.mp3", 
                               language="hi",
                               task="translate",
