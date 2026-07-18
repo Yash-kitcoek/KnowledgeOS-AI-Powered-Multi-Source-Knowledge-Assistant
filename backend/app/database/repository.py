@@ -78,6 +78,14 @@ class KnowledgeRepository:
         with self._connect() as connection:
             return connection.execute("SELECT * FROM documents WHERE id = ?", (document_id,)).fetchone()
 
+    def documents(self) -> list[sqlite3.Row]:
+        """Return documents newest first for the library view."""
+
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT * FROM documents ORDER BY created_at DESC, rowid DESC"
+            ).fetchall()
+
     def store_chunks(self, document_id: str, chunks: list[tuple[str, str | None]]) -> None:
         with self._connect() as connection:
             connection.execute("DELETE FROM chunks WHERE document_id = ?", (document_id,))
@@ -103,13 +111,15 @@ class KnowledgeRepository:
             return []
         where = " OR ".join("lower(chunks.text) LIKE ?" for _ in terms)
         parameters = [f"%{term}%" for term in terms]
+        score = " + ".join("CASE WHEN lower(chunks.text) LIKE ? THEN 1 ELSE 0 END" for _ in terms)
+        parameters.extend(f"%{term}%" for term in terms)
         parameters.append(limit)
         with self._connect() as connection:
             return connection.execute(
-                f"""SELECT chunks.*, documents.filename
+                f"""SELECT chunks.*, documents.filename, ({score}) AS relevance
                 FROM chunks JOIN documents ON documents.id = chunks.document_id
                 WHERE {where}
-                ORDER BY chunks.created_at DESC LIMIT ?""",
+                ORDER BY relevance DESC, chunks.created_at DESC LIMIT ?""",
                 parameters,
             ).fetchall()
 
