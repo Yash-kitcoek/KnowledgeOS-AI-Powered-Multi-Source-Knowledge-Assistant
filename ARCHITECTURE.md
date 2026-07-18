@@ -49,3 +49,31 @@ backend/
 
 This sequence keeps the system demonstrable at every stage while avoiding a
 large, hard-to-test rewrite.
+
+## Run the current application
+
+KnowledgeOS now provides a complete local MVP for text-based sources:
+
+1. Create and activate a Python 3.11+ virtual environment.
+2. Install the backend: `python -m pip install -e ".[dev,documents]"`.
+   The `documents` extra enables PDF, DOCX, and PPTX extraction. Plain-text and
+   Markdown files work with the base installation.
+3. Optionally install [Ollama](https://ollama.com) and run
+   `ollama pull llama3.2`. Without Ollama, KnowledgeOS still retrieves and
+   displays the most relevant source passages with citations.
+4. Copy `.env.example` to `.env` if you want to customize the data location or
+   local model settings.
+5. Start the app with `uvicorn backend.app.main:app --reload` and open
+   `http://127.0.0.1:8000`.
+
+The browser interface lets you upload a source, see its indexing status, and
+ask questions. API documentation is available at `/docs`.
+
+### Supported sources
+
+| Type | Status | Requirement |
+| --- | --- | --- |
+| TXT, Markdown | Indexed locally | Base installation |
+| PDF, DOCX, PPTX | Indexed locally | `documents` extra |
+| Images | OCR adapter included | `ocr` extra plus Tesseract installed |
+| Audio and video | Transcription adapter included | Whisper and FFmpeg installed |
