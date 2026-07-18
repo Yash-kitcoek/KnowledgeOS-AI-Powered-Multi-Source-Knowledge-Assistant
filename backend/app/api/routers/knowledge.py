@@ -1,7 +1,7 @@
 """Library, search, and RAG chat endpoints."""
 
-from dataclasses import asdict
 import sqlite3
+from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -36,14 +36,20 @@ def ask(request: AskRequest, settings: Settings = Depends(get_settings)) -> AskR
         _repository(settings), settings
     ).answer(request.question, request.session_id)
     return AskResponse(
-        answer=answer, session_id=session_id, used_local_model=used_local_model,
+        answer=answer,
+        session_id=session_id,
+        used_local_model=used_local_model,
         citations=[CitationResponse(**asdict(citation)) for citation in citations],
     )
 
 
 def _document_response(row: sqlite3.Row) -> DocumentResponse:
     return DocumentResponse(
-        document_id=row["id"], filename=row["filename"], source_type=row["source_type"],
-        size_bytes=row["size_bytes"], status=row["status"], error=row["error"],
+        document_id=row["id"],
+        filename=row["filename"],
+        source_type=row["source_type"],
+        size_bytes=row["size_bytes"],
+        status=row["status"],
+        error=row["error"],
         created_at=row["created_at"],
     )

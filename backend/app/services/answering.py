@@ -19,19 +19,27 @@ class AnsweringService:
         self._repository = repository
         self._settings = settings
 
-    def answer(self, question: str, session_id: str | None = None) -> tuple[str, str, list[Citation], bool]:
+    def answer(
+        self, question: str, session_id: str | None = None
+    ) -> tuple[str, str, list[Citation], bool]:
         session_id = session_id or str(uuid4())
         matches = self._repository.search_chunks(question, self._settings.retrieval_limit)
         citations = [
             Citation(
-                document_id=row["document_id"], filename=row["filename"], chunk_id=row["id"],
-                excerpt=row["text"][:320], location=row["location"],
+                document_id=row["document_id"],
+                filename=row["filename"],
+                chunk_id=row["id"],
+                excerpt=row["text"][:320],
+                location=row["location"],
             )
             for row in matches
         ]
         self._repository.add_message(session_id, "user", question)
         if not matches:
-            answer = "I couldn't find this in your indexed documents. Upload relevant material and try again."
+            answer = (
+                "I couldn't find this in your indexed documents. "
+                "Upload relevant material and try again."
+            )
             self._repository.add_message(session_id, "assistant", answer)
             return answer, session_id, citations, False
 
@@ -50,17 +58,27 @@ class AnsweringService:
         return answer, session_id, citations, used_local_model
 
     def _ask_ollama(self, question: str, context: str) -> str | None:
-        payload = json.dumps({
-            "model": self._settings.ollama_chat_model,
-            "stream": False,
-            "messages": [
-                {"role": "system", "content": "Answer only using the supplied context. Cite passages as [1], [2]. If context is insufficient, say so."},
-                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
-            ],
-        }).encode("utf-8")
+        payload = json.dumps(
+            {
+                "model": self._settings.ollama_chat_model,
+                "stream": False,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "Answer only using the supplied context. Cite passages as [1], [2]. "
+                            "If context is insufficient, say so."
+                        ),
+                    },
+                    {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
+                ],
+            }
+        ).encode("utf-8")
         request = Request(
             f"{self._settings.ollama_base_url.rstrip('/')}/api/chat",
-            data=payload, headers={"Content-Type": "application/json"}, method="POST",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
         try:
             with urlopen(request, timeout=20) as response:  # nosec B310 - configured local URL

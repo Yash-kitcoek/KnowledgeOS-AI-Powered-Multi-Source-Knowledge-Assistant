@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KnowledgeOS</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0c111b; --panel:#151c2b; --line:#2b3850; --ink:#edf2ff; --muted:#9cabca; --accent:#7c9cff; --success:#6ed6aa; }
+    * { box-sizing:border-box } body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,sans-serif }
+    main { max-width:1180px; margin:auto; padding:40px 24px 70px } header { display:flex; align-items:end; justify-content:space-between; gap:20px; margin-bottom:32px }
+    h1 { font-size:2.1rem; margin:0 } h2 { font-size:1rem; margin:0 0 16px } p { color:var(--muted) } .grid { display:grid; grid-template-columns:330px 1fr; gap:24px }
+    section { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px } input, button { font:inherit } input[type=file] { width:100%; color:var(--muted); margin:10px 0 14px }
+    button { border:0; cursor:pointer; border-radius:8px; padding:10px 14px; color:white; background:var(--accent); font-weight:650 } button:disabled { opacity:.55; cursor:wait }
+    #documents { list-style:none; padding:0; margin:0; max-height:430px; overflow:auto } #documents li { padding:12px 0; border-top:1px solid var(--line) } #documents li:first-child { border:0 }
+    .meta { font-size:.8rem; color:var(--muted) }.status-indexed { color:var(--success) }.status-failed { color:#ff9393 }
+    #messages { min-height:370px; max-height:520px; overflow:auto; display:flex; flex-direction:column; gap:14px; margin-bottom:18px }.message { max-width:90%; border-radius:10px; padding:13px 15px; white-space:pre-wrap }
+    .user { align-self:end; background:#26375d }.assistant { background:#202a3e }.citations { color:var(--muted); font-size:.86rem; padding:0 3px }.citations b { color:var(--ink) }
+    form.chat { display:flex; gap:10px } form.chat input { min-width:0; flex:1; color:var(--ink); background:#0f1624; border:1px solid var(--line); border-radius:8px; padding:10px 12px }
+    #notice { min-height:24px; font-size:.9rem } @media(max-width:750px) { main{padding:25px 15px}.grid{grid-template-columns:1fr} header{display:block} }
+  </style>
+</head>
+<body>
+  <main>
+    <header><div><h1>KnowledgeOS</h1><p>Build a private knowledge base from your files, then ask it questions.</p></div><span id="model-state" class="meta">Local-first</span></header>
+    <div class="grid">
+      <section><h2>Your library</h2><form id="upload-form"><input id="file" type="file" accept=".txt,.md,.markdown,.pdf,.docx,.pptx,.png,.jpg,.jpeg,.webp,.mp3,.m4a,.wav,.mp4,.mkv,.avi,.mov" required><button>Upload and index</button></form><p id="notice"></p><ul id="documents"><li class="meta">Loading documents…</li></ul></section>
+      <section><h2>Ask your knowledge base</h2><div id="messages"><div class="message assistant">Upload a file, wait for its status to become <b>indexed</b>, and ask a question. Answers include the source passages used.</div></div><form id="chat-form" class="chat"><input id="question" placeholder="What would you like to know?" minlength="2" required><button>Ask</button></form></section>
+    </div>
+  </main>
+  <script>
+    const docs = document.querySelector('#documents'), messages = document.querySelector('#messages'), notice = document.querySelector('#notice');
+    let sessionId = localStorage.getItem('knowledgeos-session') || '';
+    const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+    async function loadDocuments() {
+      const response = await fetch('/v1/documents'); const items = await response.json();
+      docs.innerHTML = items.length ? items.map(item => `<li><strong>${escape(item.filename)}</strong><br><span class="meta status-${item.status}">${item.status} · ${(item.size_bytes / 1024).toFixed(1)} KB${item.error ? ` · ${escape(item.error)}` : ''}</span></li>`).join('') : '<li class="meta">No documents uploaded yet.</li>';
+      if (items.some(item => item.status === 'staged')) setTimeout(loadDocuments, 1500);
+    }
+    function addMessage(kind, body, citations=[]) {
+      const message = document.createElement('div'); message.className = `message ${kind}`; message.textContent = body; messages.append(message);
+      if (citations.length) { const refs = document.createElement('div'); refs.className = 'citations'; refs.innerHTML = '<b>Sources</b><br>' + citations.map((ref,i) => `[${i+1}] ${escape(ref.filename)}${ref.location ? ` — ${escape(ref.location)}` : ''}: ${escape(ref.excerpt)}`).join('<br>'); messages.append(refs); }
+      messages.scrollTop = messages.scrollHeight;
+    }
+    document.querySelector('#upload-form').addEventListener('submit', async event => {
+      event.preventDefault(); const button = event.target.querySelector('button'), file = document.querySelector('#file').files[0]; button.disabled = true; notice.textContent = 'Uploading…';
+      const form = new FormData(); form.append('file', file);
+      try { const response = await fetch('/v1/documents/upload', {method:'POST', body:form}); const result = await response.json(); if (!response.ok) throw new Error(result.detail || 'Upload failed'); notice.textContent = `${result.filename} is being indexed.`; event.target.reset(); loadDocuments(); } catch (error) { notice.textContent = error.message; } finally { button.disabled = false; }
+    });
+    document.querySelector('#chat-form').addEventListener('submit', async event => {
+      event.preventDefault(); const field = document.querySelector('#question'), button = event.target.querySelector('button'), question = field.value.trim(); if (!question) return; addMessage('user', question); field.value=''; button.disabled=true;
+      try { const response = await fetch('/v1/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({question, session_id:sessionId || null})}); const result = await response.json(); if (!response.ok) throw new Error(result.detail || 'Question failed'); sessionId=result.session_id; localStorage.setItem('knowledgeos-session', sessionId); document.querySelector('#model-state').textContent = result.used_local_model ? 'Answered by Ollama' : 'Retrieved locally'; addMessage('assistant', result.answer, result.citations); } catch (error) { addMessage('assistant', `Sorry, ${error.message}`); } finally { button.disabled=false; field.focus(); }
+    });
+    loadDocuments();
+  </script>
+</body>
+</html>

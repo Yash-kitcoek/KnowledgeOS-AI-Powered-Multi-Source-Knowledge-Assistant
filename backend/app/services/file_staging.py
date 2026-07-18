@@ -43,9 +43,7 @@ class FileStagingService:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    def stage(
-        self, *, filename: str, content: bytes, content_type: str | None
-    ) -> StagedUpload:
+    def stage(self, *, filename: str, content: bytes, content_type: str | None) -> StagedUpload:
         """Validate and atomically stage one uploaded file.
 
         The caller's path is never trusted: only a basename is retained as
